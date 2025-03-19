@@ -5,8 +5,23 @@ import re
 import rsa
 import json
 import base64
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 from urllib import parse
 from bs4 import BeautifulSoup
+
+
+# 创建一个重试机制
+retry_strategy = Retry(
+    total=3,  # 重试次数
+    backoff_factor=1,  # 重试间隔时间
+    status_forcelist=[429, 500, 502, 503, 504]  # 需要重试的状态码
+)
+adapter = HTTPAdapter(max_retries=retry_strategy)
+s = requests.Session()
+s.mount('https://', adapter)
+s.mount('http://', adapter)
+
 
 s = requests.Session()
 
