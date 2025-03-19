@@ -6,6 +6,7 @@ import rsa
 import json
 import base64
 from urllib import parse
+from bs4 import BeautifulSoup
 
 s = requests.Session()
 
@@ -136,10 +137,56 @@ def calculate_md5_sign(params):
     return hashlib.md5('&'.join(sorted(params.split('&'))).encode('utf-8')).hexdigest()
 
 
+# def login(username, password):
+#     url = "https://cloud.189.cn/udb/udb_login.jsp?pageId=1&redirectURL=/main.action"
+#     r = s.get(url)
+#     captchaToken = re.findall(r"captchaToken' value='(.+?)'", r.text)[0]
+#     lt = re.findall(r'lt = "(.+?)"', r.text)[0]
+#     returnUrl = re.findall(r"returnUrl = '(.+?)'", r.text)[0]
+#     paramId = re.findall(r'paramId = "(.+?)"', r.text)[0]
+#     j_rsakey = re.findall(r'j_rsaKey" value="(\S+)"', r.text, re.M)[0]
+#     s.headers.update({"lt": lt})
+
+#     username = rsa_encode(j_rsakey, username)
+#     password = rsa_encode(j_rsakey, password)
+#     url = "https://open.e.189.cn/api/logbox/oauth2/loginSubmit.do"
+#     headers = {
+#         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:74.0) Gecko/20100101 Firefox/76.0',
+#         'Referer': 'https://open.e.189.cn/',
+#     }
+#     data = {
+#         "appKey": "cloud",
+#         "accountType": '01',
+#         "userName": f"{{RSA}}{username}",
+#         "password": f"{{RSA}}{password}",
+#         "validateCode": "",
+#         "captchaToken": captchaToken,
+#         "returnUrl": returnUrl,
+#         "mailSuffix": "@189.cn",
+#         "paramId": paramId
+#     }
+#     r = s.post(url, data=data, headers=headers, timeout=5)
+#     if(r.json()['result'] == 0):
+#         print(r.json()['msg'])
+#     else:
+#         print(r.json()['msg'])
+#     redirect_url = r.json()['toUrl']
+#     r = s.get(redirect_url)
+#     return s
+
 def login(username, password):
     url = "https://cloud.189.cn/udb/udb_login.jsp?pageId=1&redirectURL=/main.action"
     r = s.get(url)
-    captchaToken = re.findall(r"captchaToken' value='(.+?)'", r.text)[0]
+    # 检查请求状态码
+    if r.status_code != 200:
+        print(f"请求失败，状态码: {r.status_code}")
+        return None
+    soup = BeautifulSoup(r.text, 'html.parser')
+    captchaToken_input = soup.find('input', {'name': 'captchaToken'})
+    if captchaToken_input is None:
+        print("未找到 captchaToken，请检查网页结构是否发生变化。")
+        return None
+    captchaToken = captchaToken_input.get('value')
     lt = re.findall(r'lt = "(.+?)"', r.text)[0]
     returnUrl = re.findall(r"returnUrl = '(.+?)'", r.text)[0]
     paramId = re.findall(r'paramId = "(.+?)"', r.text)[0]
@@ -172,7 +219,6 @@ def login(username, password):
     redirect_url = r.json()['toUrl']
     r = s.get(redirect_url)
     return s
-
 
 if __name__ == "__main__":
     main()
